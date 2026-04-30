@@ -1,0 +1,15 @@
+{
+  "name": "view-sync-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "start:backend": "npm run start --workspace=backend-api",
+    "start:viewer": "npm run dev --workspace=viewer-web",
+    "start:desktop": "npm run start --workspace=desktop-transmissor",
+    "build:all": "npm run build --workspaces"
+  }
+}

@@ -1,0 +1,20 @@
+# Dependências pesadas (O robô baixa as dele)
+node_modules/
+
+# Pastas de build geradas automaticamente
+dist/
+dist-electron/
+out/
+release/
+.next/
+
+# Arquivos de sistema do Windows/Mac
+.DS_Store
+Thumbs.db
+
+# Variáveis de ambiente e senhas (Segurança)
+.env
+.env.local
+
+# Pastas antigas ou não utilizadas no executável
+backend/
