@@ -6,7 +6,6 @@ on:
 jobs:
   build-mac:
     name: Build para Mac
-    # Roda direto e apenas no servidor da Apple
     runs-on: macos-latest
 
     steps:
