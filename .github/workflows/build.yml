@@ -9,35 +9,36 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: 📥 Baixando o seu código
-        uses: actions/checkout@v4
+      - name: 📥 Baixando o código
+        uses: actions/checkout@v5
 
       - name: ⚙️ Configurando o Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: "24"
+          cache: "npm"
 
-      - name: 🏗️ Instalando e Compilando o Viewer (Site do Aluno)
+      - name: 🏗️ Instalando e compilando o Viewer
+        working-directory: apps/viewer-web
         run: |
-          cd apps/viewer-web
-          npm install
+          npm ci
           npm run build
 
-      - name: 🚚 Movendo a pasta 'out' para o Desktop
-        run: mv apps/viewer-web/out apps/desktop-transmissor/out
+      - name: 🚚 Copiando o build do viewer
+        run: |
+          rm -rf apps/desktop-transmissor/out
+          cp -R apps/viewer-web/out apps/desktop-transmissor/out
 
       - name: 📦 Instalando dependências do Desktop
-        run: |
-          cd apps/desktop-transmissor
-          npm install
+        working-directory: apps/desktop-transmissor
+        run: npm ci
 
-      - name: 🍎 Gerando .DMG (Mac)
-        run: |
-          cd apps/desktop-transmissor
-          npm run build -- --mac
+      - name: 🍎 Gerando .DMG
+        working-directory: apps/desktop-transmissor
+        run: npm run build -- --mac
 
-      - name: 💾 Salvando o Arquivo Final
-        uses: actions/upload-artifact@v4
+      - name: 💾 Salvando o arquivo final
+        uses: actions/upload-artifact@v6
         with:
           name: ViewSync-Instalador-Mac
           path: apps/desktop-transmissor/release/*.dmg
