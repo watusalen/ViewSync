@@ -5,40 +5,31 @@ on:
 
 jobs:
   build-mac:
-    name: Build para Mac
     runs-on: macos-latest
 
     steps:
-      - name: 📥 Baixando o código
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: ⚙️ Configurando o Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: 24
+          cache: npm
 
-      - name: 🏗️ Instalando e compilando o Viewer
-        working-directory: apps/viewer-web
-        run: |
-          npm ci
-          npm run build
-
-      - name: 🚚 Copiando o build do viewer
-        run: |
-          rm -rf apps/desktop-transmissor/out
-          cp -R apps/viewer-web/out apps/desktop-transmissor/out
-
-      - name: 📦 Instalando dependências do Desktop
-        working-directory: apps/desktop-transmissor
+      - name: Instalar dependências raiz
         run: npm ci
 
-      - name: 🍎 Gerando .DMG
+      - name: Build Viewer
+        working-directory: apps/viewer-web
+        run: npm run build
+
+      - name: Copiar viewer
+        run: cp -R apps/viewer-web/out apps/desktop-transmissor/out
+
+      - name: Build Mac
         working-directory: apps/desktop-transmissor
         run: npm run build -- --mac
 
-      - name: 💾 Salvando o arquivo final
-        uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v6
         with:
-          name: ViewSync-Instalador-Mac
+          name: ViewSync-Mac
           path: apps/desktop-transmissor/release/*.dmg
