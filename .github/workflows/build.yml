@@ -16,7 +16,7 @@ jobs:
       - name: ⚙️ Configurando o Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: 🏗️ Instalando e Compilando o Viewer (Site do Aluno)
         run: |
