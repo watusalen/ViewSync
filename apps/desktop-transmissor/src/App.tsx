@@ -25,6 +25,9 @@ export default function App() {
     try {
       const desktopSources = await (window as any).mirrorAPI.getDesktopSources()
       setSources(desktopSources)
+      if (desktopSources.length > 0) {
+        setSelectedSource((prev) => prev || desktopSources[0].id)
+      }
     } catch (err) {
       console.error("Erro ao carregar fontes de vídeo:", err)
     }
@@ -33,8 +36,6 @@ export default function App() {
   useEffect(() => {
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
-
-    // Captura IP e Nome da Rede (Wi-Fi ou Ethernet) em um único bloco
     socket.on('server:info', (data) => {
       setServerIp(data.ip);
       setNetworkName(data.network);
@@ -91,18 +92,16 @@ export default function App() {
         video: {
           mandatory: {
             chromeMediaSource: 'desktop',
-            chromeMediaSourceId: selectedSource,
-            maxWidth: 1920,
-            maxHeight: 1080
+            chromeMediaSourceId: selectedSource 
           }
-        } as any
-      })
+        } as any 
+      });
 
       setLocalStream(stream)
       setIsStreaming(true)
       socket.emit('host:start_stream', { config: { fps, hasPassword: password.length > 0 }, password });
     } catch (error) {
-      alert('Erro ao capturar a tela.')
+      alert('Erro ao capturar a tela. O aplicativo tem permissão?')
     }
   }
 
@@ -111,12 +110,11 @@ export default function App() {
     if (streamingLoopRef.current) clearInterval(streamingLoopRef.current as number);
     setLocalStream(null);
     setIsStreaming(false);
-    setSelectedSource(null);
+    
     socket.emit('host:stop_stream');
   }
 
   const switchStream = async (newSourceId: string) => {
-    // Se clicar na mesma tela que já está, ignora
     if (newSourceId === selectedSource) return;
 
     try {
@@ -132,12 +130,10 @@ export default function App() {
         } as any
       });
 
-      // Para a captura da tela antiga para não vazar memória
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
 
-      // Atualiza os estados: O useEffect vai cuidar de mandar a nova imagem automaticamente!
       setSelectedSource(newSourceId);
       setLocalStream(newStream);
 
@@ -222,8 +218,8 @@ export default function App() {
                       key={source.id}
                       onClick={() => switchStream(source.id)}
                       className={`flex-shrink-0 w-32 cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 ${selectedSource === source.id
-                          ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] opacity-100'
-                          : 'border-gray-700 opacity-40 hover:opacity-100 hover:border-gray-500'
+                        ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] opacity-100'
+                        : 'border-gray-700 opacity-40 hover:opacity-100 hover:border-gray-500'
                         }`}
                     >
                       <img src={source.thumbnail} alt={source.name} className="w-full h-16 object-cover bg-black" />

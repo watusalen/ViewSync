@@ -1,7 +1,7 @@
 {
   "name": "view-sync-desktop",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "ViewSync - Transmissor de Tela",
   "author": "Kellviny",
   "type": "module",
