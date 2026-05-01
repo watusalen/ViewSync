@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 
-const socket: Socket = io('http://localhost:3000')
+const socket: Socket = io('http://localhost')
 
 export default function App() {
   const [sources, setSources] = useState<any[]>([])
@@ -193,7 +193,7 @@ export default function App() {
                 <div className="text-right">
                   <span className="text-xs text-gray-400 block mb-1">Endereço para os alunos:</span>
                   <div className="text-xl font-mono font-bold text-emerald-400 bg-gray-900 px-4 py-2 rounded-lg border border-emerald-900/50 shadow-inner">
-                    http://{serverIp}:3000
+                    http://{serverIp}
                   </div>
                 </div>
               </div>

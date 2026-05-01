@@ -44,16 +44,11 @@ ipcMain.handle('get-desktop-sources', async () => {
 const setupInternalServer = () => {
   const expressApp = express()
   const httpServer = createServer(expressApp)
-
-  // Otimização de RAM: volatile impede acúmulo de frames na memória
   const io = new Server(httpServer, {
     cors: { origin: '*' },
     perMessageDeflate: false,
     maxHttpBufferSize: 1e7
   })
-
-  // AUTONOMIA: Serve o site do aluno automaticamente
-  // Certifique-se de que a pasta 'out' do viewer-web existe após o build
   const viewerPath = app.isPackaged
     ? path.join(process.env.APP_ROOT, 'out')
     : path.join(process.env.APP_ROOT, '../viewer-web/out');
@@ -112,7 +107,9 @@ const setupInternalServer = () => {
     })
   })
 
-  httpServer.listen(3000, '0.0.0.0')
+  httpServer.listen(80, '0.0.0.0').on('error', (err: any) => {
+    console.error('Erro ao iniciar o servidor na porta 80:', err);
+  });
 }
 
 function createWindow() {
@@ -122,7 +119,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.js'),
       backgroundThrottling: false,
       nodeIntegration: false,
       contextIsolation: true,
