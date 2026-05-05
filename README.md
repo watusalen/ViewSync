@@ -1,71 +1,52 @@
-# ViewSync - Streaming LAN de Ultra Performance (SFU)
+# ViewSync 🖥️🚀
 
-ViewSync é uma solução profissional de espelhamento de tela projetada especificamente para ambientes com muitos usuários em rede local, como salas de aula, laboratórios e escritórios. 
+ViewSync is a professional screen sharing system designed for educational environments. It uses **SFU (Selective Forwarding Unit)** architecture with **Mediasoup** to provide ultra-low latency streaming within a local network (LAN), allowing a teacher to broadcast their screen to multiple students simultaneously with high performance.
 
-Diferente de soluções tradicionais que travam com 5 ou 10 alunos, o ViewSync utiliza arquitetura de **SFU (Selective Forwarding Unit)** para suportar **60+ conexões simultâneas** com latência imperceptível e baixo uso de CPU no computador do professor.
+## 🌟 Key Features
 
-## 🏗️ Arquitetura do Sistema
+- **Ultra-Low Latency**: Real-time streaming using WebRtc.
+- **Privacy & Security**: Secure rooms with optional password protection.
+- **Responsive Design**: Modern, glassmorphic UI that works on any device.
+- **Smart Bandwidth Management**: Automatic pause/resume based on tab visibility.
+- **Cross-Platform**: Native applications for Windows and macOS.
 
-O ViewSync foi projetado com isolamento de processos para garantir estabilidade:
+## 🛠️ Technology Stack
 
-1.  **Processo Main (Electron)**: Gerencia a interface do professor, as janelas e o ciclo de vida do app.
-2.  **Processo de Servidor (Node.js)**: Um processo isolado iniciado pelo Electron que hospeda:
-    *   **Mediasoup (SFU)**: Motor C++ de alto desempenho que recebe o fluxo de vídeo e o replica para os alunos sem re-encodificação.
-    *   **Socket.io**: Gerencia a sinalização WebRTC e o estado da sala.
-    *   **Express**: Serve o Viewer (site do aluno) de forma local.
+- **Core**: Node.js, TypeScript.
+- **Streaming**: Mediasoup (SFU), Socket.io, WebRtc.
+- **Frontend**: React, Next.js, Tailwind CSS, Lucide Icons.
+- **Desktop**: Electron, Vite.
 
-## 📡 Funcionamento na Rede Local (LAN)
+## 🏗️ Architecture
 
-O ViewSync opera 100% offline (não requer internet):
-*   **Zero Configuração**: O professor inicia a transmissão e o sistema detecta automaticamente o IP da rede local.
-*   **Latência Zero**: Utiliza WebRTC (UDP) para transmissão em tempo real. Se o UDP estiver bloqueado pela rede da escola, o sistema faz fallback automático para TCP.
-*   **Eficiência de Banda**: O professor envia o vídeo apenas **uma vez** para o SFU local, que distribui para os alunos. Isso economiza até 95% de banda de upload em comparação com o P2P.
+ViewSync uses a distributed architecture:
+1. **Transmissor (Host)**: An Electron app that captures the screen and sends it to the server.
+2. **SFU Server**: Manages WebRtc transports and forwards media streams.
+3. **Viewer (Client)**: A web-based application where students can view the broadcast.
 
-## 🛠️ Tecnologias Utilizadas
+## 🚀 Getting Started
 
-*   **Frontend (Professor)**: React, Tailwind CSS, Vite.
-*   **Frontend (Aluno)**: Next.js (Static Lite), Mediasoup-client.
-*   **Processamento de Mídia**: [Mediasoup](https://mediasoup.org/) (Motor SFU nativo em C++).
-*   **Shell**: Electron (v30+).
+### Prerequisites
+- Node.js (v18+)
+- C++ Build Tools (for Mediasoup)
 
-## 🚀 Como Iniciar
-
-### Pré-requisitos
-- Node.js 20 (LTS recomendado).
-- Python 3 e Ferramentas de Build (C++ compiler) instaladas para compilar o Mediasoup.
-
-### Instalação
-```powershell
-# 1. Instale as dependências
+### Installation
+```bash
+# Install dependencies
 npm install
 
-# 2. Recompile os módulos nativos (CRÍTICO)
-npm run rebuild --workspace=view-sync-desktop
+# Build the viewer
+npm run build --workspace=view-sync-web
+
+# Run the desktop app in dev mode
+npm run dev --workspace=view-sync-desktop
 ```
 
-### Desenvolvimento
-```powershell
-npm run start:desktop
-```
+## 📦 Distribution
 
-## 🧪 Teste de Estresse (Simulando 60 Alunos)
-
-Você pode testar a capacidade do seu computador de distribuir o vídeo antes de levar para a sala de aula:
-
-1.  Instale o Puppeteer: `npm install puppeteer --save-dev`
-2.  Inicie a transmissão no App do Professor.
-3.  Execute o teste:
-    ```powershell
-    # node scripts/stress-test.js [IP_DO_SERVIDOR] [NUMERO_DE_ALUNOS]
-    node scripts/stress-test.js http://localhost:3000 60
-    ```
-O script abrirá 60 instâncias invisíveis do Chrome e reportará se o vídeo está sendo recebido com sucesso por todos eles.
-
-## 📦 Geração de Instaladores (.exe e .dmg)
-
-O projeto está configurado com **GitHub Actions**. Basta fazer um push ou disparar o workflow manualmente no GitHub para receber os links de download:
-*   **Windows**: Gera um instalador NSIS `.exe`.
-*   **macOS**: Gera um arquivo `.dmg` universal.
+Executables for Windows and macOS are automatically generated via GitHub Actions:
+- **Windows**: `.exe` (Installer & Portable)
+- **macOS**: `.dmg` (Universal)
 
 ---
-Desenvolvido por Kellviny. Licença MIT.
+Developed by **Kellviny** &bull; 2026

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, ipcMain } from 'electron'
+import { app, BrowserWindow, desktopCapturer, ipcMain, dialog } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { fork, ChildProcess } from 'node:child_process'
@@ -14,9 +14,9 @@ process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 process.env.APP_ROOT = path.join(__dirname, '..')
 
-export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
+const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
+const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
@@ -25,6 +25,7 @@ let serverProcess: ChildProcess | null = null
 
 const startInternalServer = () => {
   const serverPath = path.join(MAIN_DIST, 'server.js')
+  
   serverProcess = fork(serverPath, [], {
     env: {
       ...process.env,
@@ -35,8 +36,17 @@ const startInternalServer = () => {
     },
     stdio: 'inherit'
   })
-  serverProcess.on('error', () => {})
-  serverProcess.on('exit', () => {})
+
+  serverProcess.on('exit', (code) => {
+    if (code !== 0 && code !== null) {
+      if (app.isPackaged) {
+        dialog.showErrorBox(
+          'Erro Crítico no Servidor', 
+          `O motor de vídeo (Mediasoup) falhou ao iniciar (Código: ${code}).\nIsso geralmente ocorre se o executável do worker ficou preso dentro do app.asar.`
+        );
+      }
+    }
+  })
 }
 
 const setupIPCHandlers = () => {
@@ -61,7 +71,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, app.isPackaged ? 'preload.js' : 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.js'),
       backgroundThrottling: false,
       nodeIntegration: false,
       contextIsolation: true,

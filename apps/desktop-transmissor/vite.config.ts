@@ -11,14 +11,14 @@ export default defineConfig({
         entry: 'electron/main.ts',
         vite: {
           build: {
+            minify: false,
+            outDir: 'dist-electron',
             rollupOptions: {
-              external: [
-                'bufferutil', 
-                'utf-8-validate', 
-                'mediasoup',
-                'express',
-                'socket.io'
-              ]
+              external: ['mediasoup', 'express', 'socket.io', 'bufferutil', 'utf-8-validate'],
+              output: {
+                format: 'cjs', 
+                entryFileNames: '[name].js',
+              }
             }
           }
         }
@@ -27,23 +27,36 @@ export default defineConfig({
         entry: 'electron/server.ts',
         vite: {
           build: {
+            minify: false,
+            outDir: 'dist-electron',
             rollupOptions: {
-              external: [
-                'bufferutil', 
-                'utf-8-validate', 
-                'mediasoup',
-                'express',
-                'socket.io'
-              ]
+              external: ['mediasoup', 'express', 'socket.io', 'bufferutil', 'utf-8-validate'],
+              output: {
+                format: 'cjs', 
+                entryFileNames: '[name].js',
+              }
             }
           }
         }
       },
       {
+        // Preload script
         entry: 'electron/preload.ts',
         onstart(options) {
           options.reload()
         },
+        vite: {
+          build: {
+            minify: false,
+            outDir: 'dist-electron',
+            rollupOptions: {
+              output: {
+                format: 'cjs',
+                entryFileNames: '[name].js', 
+              }
+            }
+          }
+        }
       },
     ]),
   ],

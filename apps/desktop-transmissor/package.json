@@ -1,13 +1,12 @@
 {
   "name": "view-sync-desktop",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "ViewSync - Transmissor de Tela",
   "author": "Kellviny",
-  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "cd ../viewer-web && npm run build && cd ../desktop-transmissor && tsc && vite build && electron-builder",
     "rebuild": "electron-rebuild -f -w mediasoup",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
@@ -64,9 +63,11 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist"
     },
+    "asar": false,
     "files": [
       "dist",
-      "dist-electron"
+      "dist-electron",
+      "node_modules"
     ],
     "extraResources": [
       {

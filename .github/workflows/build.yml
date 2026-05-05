@@ -28,24 +28,11 @@ jobs:
       - name: 📦 Instalando Dependências
         run: npm install
 
-      - name: 🏗️ Compilando o Viewer (Site do Aluno)
-        run: |
-          cd apps/viewer-web
-          npm run build
-
-      - name: ⚙️ Recompilando Módulos Nativos (Mediasoup)
+      - name: ⚙️ Recompilando Módulos Nativos (Mediasoup C++)
         run: npm run rebuild --workspace=view-sync-desktop
 
       - name: 🚀 Gerando Instaladores (Electron Builder)
-        run: |
-          cd apps/desktop-transmissor
-          # No Windows roda build para win, no Mac roda para mac
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            npm run build -- --win
-          else
-            npm run build -- --mac
-          fi
-        shell: bash
+        run: npm run build --workspace=view-sync-desktop
 
       - name: 💾 Salvando Artefatos (Download)
         uses: actions/upload-artifact@v4

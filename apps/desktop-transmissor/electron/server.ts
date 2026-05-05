@@ -71,10 +71,6 @@ const createWebRtcTransport = async () => {
     if (dtlsState === 'closed') transport.close();
   })
 
-  transport.on('icestatechange', (state) => {
-    console.log(`[ViewSync-Server] ICE State: ${state}`);
-  });
-
   transports.set(transport.id, transport)
   return transport
 }
@@ -103,7 +99,6 @@ const startServer = async () => {
   const activeViewers = new Set<string>()
 
   const broadcastState = () => {
-    // connectedCount = total de conexões - 1 (se o professor estiver conectado)
     const totalSockets = io.engine.clientsCount
     const actualViewersCount = currentHostId ? Math.max(0, totalSockets - 1) : totalSockets
     
@@ -132,7 +127,7 @@ const startServer = async () => {
 
     socket.on('host:start_stream', (payload) => {
       currentHostId = socket.id; 
-      activeViewers.delete(socket.id); // Host não conta como visualizador
+      activeViewers.delete(socket.id);
       roomPassword = payload.password || ''; 
       roomState.isStreaming = true; 
       roomState.config = payload.config
@@ -154,7 +149,6 @@ const startServer = async () => {
     })
 
     socket.on('viewer:visibility_change', async (isVisible) => {
-      // Ignora se for o host
       if (socket.id === currentHostId) return;
 
       try {
@@ -169,9 +163,7 @@ const startServer = async () => {
           }
         }
         broadcastState()
-      } catch (err) {
-        console.error('[ViewSync-Server] Erro no visibility_change:', err);
-      }
+      } catch (err) {}
     })
 
     socket.on('mediasoup:getRouterRtpCapabilities', (callback) => callback(router.rtpCapabilities))
@@ -219,9 +211,7 @@ const startServer = async () => {
     })
   })
 
-  httpServer.listen(port, '0.0.0.0', () => {
-    console.log(`[ViewSync-Server] Rodando em http://localhost:${port}`);
-  });
+  httpServer.listen(port, '0.0.0.0', () => {});
 }
 
 startServer();

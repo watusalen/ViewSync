@@ -3,7 +3,6 @@ import { io } from 'socket.io-client'
 import { Device } from 'mediasoup-client'
 import { Monitor, Play, Square, Shield, Wifi, Users, Copy, Check } from 'lucide-react'
 
-// Conecta ao servidor interno de mídia
 const socket = io('http://localhost:3000')
 
 export default function App() {
@@ -26,11 +25,10 @@ export default function App() {
   const producerRef = useRef<any>(null)
   const isStartingRef = useRef(false)
 
-  // Efeito para garantir que o preview do vídeo funcione e não fique preto
   useEffect(() => {
     if (videoRef.current && localStream) {
       videoRef.current.srcObject = localStream
-      videoRef.current.play().catch(err => console.error("Erro ao dar play no preview:", err))
+      videoRef.current.play().catch(() => {})
     }
   }, [localStream, isStreaming])
 
@@ -48,7 +46,6 @@ export default function App() {
       setRoomState(state)
     })
 
-    // Atualiza a lista de janelas, mas não altera a seleção se já estivermos transmitindo
     const sourceInterval = setInterval(() => {
       if (!isStreaming && !isStartingRef.current) {
         refreshSources()
@@ -64,7 +61,6 @@ export default function App() {
     }
   }, [isStreaming])
 
-  // Troca de tela em tempo real se o usuário mudar a seleção durante o streaming
   useEffect(() => {
     if (isStreaming && selectedSource && !isStartingRef.current) {
       switchStream(selectedSource)
@@ -73,25 +69,17 @@ export default function App() {
 
   const refreshSources = async () => {
     try {
-      console.log("[App] Solicitando fontes ao Electron...");
-      // O preload.ts expõe como mirrorAPI
       const api = (window as any).mirrorAPI || (window as any).ipcRenderer;
       
-      if (!api) {
-        console.error("[App] Erro: mirrorAPI não encontrada!");
-        return;
-      }
+      if (!api) return;
 
       const s = await api.getDesktopSources();
-      console.log("[App] Fontes recebidas:", s?.length || 0);
       setSources(s || [])
       
       if (s && s.length > 0 && selectedSource === null) {
         setSelectedSource(s[0].id)
       }
-    } catch (err) {
-      console.error("[App] Erro ao carregar fontes:", err)
-    }
+    } catch (err) {}
   }
 
   const switchStream = async (newSourceId: string) => {
@@ -119,11 +107,7 @@ export default function App() {
 
       await producerRef.current.replaceTrack({ track })
       setLocalStream(stream)
-      
-      // O useEffect acima já vai tratar o play no videoRef.current
-    } catch (error) {
-      console.error('Erro ao trocar de tela:', error)
-    }
+    } catch (error) {}
   }
 
   const copyUrl = () => {
@@ -192,7 +176,6 @@ export default function App() {
         password 
       })
     } catch (error) {
-      console.error('Erro ao iniciar stream:', error)
       alert('Erro ao iniciar captura. Verifique as permissões.')
     } finally {
       isStartingRef.current = false
