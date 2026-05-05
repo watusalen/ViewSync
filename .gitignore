@@ -29,6 +29,9 @@ pnpm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.gemini/
+.planing/
+.scripts/
 
 # OS Metadata
 .DS_Store
