@@ -1,4 +1,4 @@
-name: Build/Release ViewSync
+name: Build/Release ViewSync (Mac Only)
 
 on:
   workflow_dispatch:
@@ -8,12 +8,8 @@ on:
 
 jobs:
   release:
-    name: Build para ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
+    name: Build para Mac
+    runs-on: macos-latest
 
     steps:
       - name: 📥 Checkout do Código
@@ -25,7 +21,6 @@ jobs:
           node-version: 20
 
       - name: 📦 Instalando Dependências
-        # O --no-package-lock resolve o erro do Tailwind Oxide em diferentes OS
         run: npm install --no-package-lock
 
       - name: 🏗️ Compilando o Viewer (Site do Aluno)
@@ -39,18 +34,13 @@ jobs:
       - name: 🚀 Gerando Instaladores (Electron Builder)
         run: |
           cd apps/desktop-transmissor
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            npm run build -- --win
-          else
-            npm run build -- --mac
-          fi
+          npm run build -- --mac
         shell: bash
 
       - name: 💾 Salvando Artefatos (Download)
         uses: actions/upload-artifact@v4
         with:
-          name: ViewSync-${{ matrix.os }}
+          name: ViewSync-Mac
           path: |
-            apps/desktop-transmissor/release/*.exe
             apps/desktop-transmissor/release/*.dmg
             apps/desktop-transmissor/release/*.zip
