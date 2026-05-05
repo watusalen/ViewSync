@@ -7,8 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "start:viewer": "npm run dev --workspace=viewer-web",
-    "start:desktop": "npm run start --workspace=desktop-transmissor",
+    "start:desktop": "npm run dev --workspace=view-sync-desktop",
     "build:all": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.42.0"
   }
 }

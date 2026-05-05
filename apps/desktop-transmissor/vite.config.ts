@@ -9,11 +9,32 @@ export default defineConfig({
     electron([
       {
         entry: 'electron/main.ts',
-        // Diga ao Vite para ignorar pacotes opcionais do servidor que causam crash
         vite: {
           build: {
             rollupOptions: {
-              external: ['bufferutil', 'utf-8-validate']
+              external: [
+                'bufferutil', 
+                'utf-8-validate', 
+                'mediasoup',
+                'express',
+                'socket.io'
+              ]
+            }
+          }
+        }
+      },
+      {
+        entry: 'electron/server.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              external: [
+                'bufferutil', 
+                'utf-8-validate', 
+                'mediasoup',
+                'express',
+                'socket.io'
+              ]
             }
           }
         }
@@ -30,6 +51,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  optimizeDeps: {
+    include: ['lucide-react']
   },
   server: {
     port: 5173,

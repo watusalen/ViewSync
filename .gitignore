@@ -1,20 +1,39 @@
-# Dependências pesadas (O robô baixa as dele)
+# Dependências
 node_modules/
+.npm
+npm-debug.log*
 
-# Pastas de build geradas automaticamente
+# Builds e Saídas
 dist/
 dist-electron/
 out/
-release/
-.next/
+build/
+*.exe
+*.dmg
+*.zip
+scripts/
 
-# Arquivos de sistema do Windows/Mac
+# IDE e Sistema
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
+*.local
+.gemini/
+.planning/
 
-# Variáveis de ambiente e senhas (Segurança)
+# Ambiente
 .env
 .env.local
+.env.*.local
 
-# Pastas antigas ou não utilizadas no executável
-backend/
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Mediasoup (Nativo)
+apps/desktop-transmissor/electron/build/
+release/

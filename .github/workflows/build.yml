@@ -1,0 +1,57 @@
+name: Build/Release ViewSync
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build para ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurando Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Instalando Dependências
+        run: npm install
+
+      - name: 🏗️ Compilando o Viewer (Site do Aluno)
+        run: |
+          cd apps/viewer-web
+          npm run build
+
+      - name: ⚙️ Recompilando Módulos Nativos (Mediasoup)
+        run: npm run rebuild --workspace=view-sync-desktop
+
+      - name: 🚀 Gerando Instaladores (Electron Builder)
+        run: |
+          cd apps/desktop-transmissor
+          # No Windows roda build para win, no Mac roda para mac
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            npm run build -- --win
+          else
+            npm run build -- --mac
+          fi
+        shell: bash
+
+      - name: 💾 Salvando Artefatos (Download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ViewSync-${{ matrix.os }}
+          path: |
+            apps/desktop-transmissor/release/*.exe
+            apps/desktop-transmissor/release/*.dmg
+            apps/desktop-transmissor/release/*.zip
