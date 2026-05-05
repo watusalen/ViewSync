@@ -73,14 +73,24 @@ export default function App() {
 
   const refreshSources = async () => {
     try {
-      const s = await (window as any).ipcRenderer.invoke('get-desktop-sources')
-      setSources(s)
-      // Auto-seleciona a primeira fonte apenas na primeira carga
-      if (s.length > 0 && selectedSource === null) {
+      console.log("[App] Solicitando fontes ao Electron...");
+      // O preload.ts expõe como mirrorAPI
+      const api = (window as any).mirrorAPI || (window as any).ipcRenderer;
+      
+      if (!api) {
+        console.error("[App] Erro: mirrorAPI não encontrada!");
+        return;
+      }
+
+      const s = await api.getDesktopSources();
+      console.log("[App] Fontes recebidas:", s?.length || 0);
+      setSources(s || [])
+      
+      if (s && s.length > 0 && selectedSource === null) {
         setSelectedSource(s[0].id)
       }
     } catch (err) {
-      console.error("Erro ao carregar fontes:", err)
+      console.error("[App] Erro ao carregar fontes:", err)
     }
   }
 
