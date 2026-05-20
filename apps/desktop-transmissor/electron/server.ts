@@ -1,85 +1,61 @@
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
-import os from 'node:os'
 import path from 'node:path'
-import * as mediasoup from 'mediasoup'
+import {
+  APP_ROOT,
+  HTTP_PORT,
+  IS_PACKAGED,
+  RENDERER_DIST,
+  RESOURCES_PATH,
+  RTC_MAX_PORT,
+  RTC_MIN_PORT,
+} from './signaling/config'
+import { getNetworkDetails } from './signaling/network'
+import { RoomSessionState } from './signaling/RoomSessionState'
+import { MediasoupEngine } from './signaling/MediasoupEngine'
+import type {
+  ConnectWebRtcTransportPayload,
+  ConsumePayload,
+  HostStartStreamPayload,
+  ProducePayload,
+  ResumePayload,
+  ViewerJoinPayload,
+} from './signaling/types'
 
-const port = 3000
-const RENDERER_DIST = process.env.RENDERER_DIST || ''
-const APP_ROOT = process.env.APP_ROOT || ''
-const IS_PACKAGED = process.env.IS_PACKAGED === 'true'
-const RESOURCES_PATH = process.env.RESOURCES_PATH || ''
+const ENROLLMENT_PATTERN = /^(\d{4})(\d{3})([A-Z]{4})(\d{4})$/
+const SUSPICIOUS_NAME_PATTERN = /\b(teste|test|asdf|qwerty|admin|usuario|nome|zoado)\b/i
 
-function getNetworkDetails() {
-  const interfaces = os.networkInterfaces()
-  for (const name in interfaces) {
-    for (const iface of interfaces[name]!) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return { ip: iface.address, network: name }
-      }
-    }
-  }
-  return { ip: 'localhost', network: 'Desconhecida' }
+const normalizeName = (name: string): string => name.replace(/\s+/g, ' ').trim()
+
+const isValidEnrollment = (input: string): boolean => {
+  const match = input.match(ENROLLMENT_PATTERN)
+  if (!match) return false
+
+  const enrollmentYear = Number(match[1])
+  const currentYear = new Date().getFullYear()
+  return enrollmentYear >= 1900 && enrollmentYear <= currentYear
 }
 
-const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
-  {
-    kind: 'video',
-    mimeType: 'video/VP8',
-    clockRate: 90000,
-    preferredPayloadType: 101,
-    parameters: { 
-      'x-google-start-bitrate': 1000,
-      'x-google-max-bitrate': 5000 
-    }
-  }
-]
-
-let worker: mediasoup.types.Worker
-let router: mediasoup.types.Router
-const transports = new Map<string, mediasoup.types.WebRtcTransport>()
-const producers = new Map<string, mediasoup.types.Producer>()
-const consumers = new Map<string, mediasoup.types.Consumer>()
-
-const createWorker = async () => {
-  worker = await mediasoup.createWorker({
-    rtcMinPort: 40000,
-    rtcMaxPort: 41000,
-    logLevel: 'warn',
-  })
-  worker.on('died', () => {
-    process.exit(1)
-  })
-  router = await worker.createRouter({ mediaCodecs })
-}
-
-const createWebRtcTransport = async () => {
-  const ip = getNetworkDetails().ip;
-  
-  const transport = await router.createWebRtcTransport({
-    listenIps: [
-      { ip: '0.0.0.0', announcedIp: ip },
-      { ip: '0.0.0.0', announcedIp: '127.0.0.1' }
-    ],
-    enableUdp: true,
-    enableTcp: true,
-    preferUdp: true,
-  })
-
-  transport.on('dtlsstatechange', dtlsState => { 
-    if (dtlsState === 'closed') transport.close();
-  })
-
-  transports.set(transport.id, transport)
-  return transport
+const isValidName = (input: string): boolean => {
+  if (input.length < 3) return false
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/.test(input)) return false
+  if (!/[AEIOUaeiouÀ-ÖØ-öø-ÿ]/.test(input)) return false
+  if (/(.)\1{3,}/.test(input)) return false
+  if (SUSPICIOUS_NAME_PATTERN.test(input)) return false
+  return true
 }
 
 const startServer = async () => {
-  await createWorker()
+  const mediasoupEngine = new MediasoupEngine()
+  const roomSessionState = new RoomSessionState()
+
+  await mediasoupEngine.initialize(RTC_MIN_PORT, RTC_MAX_PORT)
+  void getNetworkDetails().catch(() => undefined)
 
   const expressApp = express()
   const httpServer = createServer(expressApp)
+
   const io = new Server(httpServer, {
     cors: { origin: '*' },
     perMessageDeflate: false,
@@ -88,88 +64,91 @@ const startServer = async () => {
 
   const viewerPath = IS_PACKAGED
     ? path.join(RESOURCES_PATH, 'viewer')
-    : path.join(APP_ROOT, '../viewer-web/out');
+    : path.join(APP_ROOT, '../viewer-web/out')
 
-  expressApp.use(express.static(viewerPath));
-  expressApp.use('/studio', express.static(RENDERER_DIST));
-
-  const roomState = { isStreaming: false, connectedCount: 0, activeViewersCount: 0, config: null as any }
-  let currentHostId: string | null = null
-  let roomPassword = ''
-  const activeViewers = new Set<string>()
+  expressApp.use(express.static(viewerPath))
+  expressApp.use('/studio', express.static(RENDERER_DIST))
 
   const broadcastState = () => {
-    const totalSockets = io.engine.clientsCount
-    const actualViewersCount = currentHostId ? Math.max(0, totalSockets - 1) : totalSockets
-    
-    io.emit('room:state_update', { 
-      ...roomState, 
-      connectedCount: actualViewersCount,
-      activeViewersCount: activeViewers.size,
-      hostId: currentHostId 
-    })
+    const state = roomSessionState.buildPublicState()
+    io.emit('room:state_update', state)
   }
 
-  io.on('connection', (socket) => {
-    const net = getNetworkDetails()
-    socket.emit('server:info', { ip: net.ip, network: net.network, port })
+  io.on('connection', async (socket) => {
+    roomSessionState.onSocketConnected(socket.id)
+
+    const net = await getNetworkDetails()
+    socket.emit('server:info', { ip: net.ip, network: net.network, port: HTTP_PORT })
     broadcastState()
 
     socket.on('disconnect', () => {
-      activeViewers.delete(socket.id)
-      if (socket.id === currentHostId) {
-        currentHostId = null; 
-        roomState.isStreaming = false; 
-        roomState.config = null; 
+      const identity = roomSessionState.getViewerIdentity(socket.id)
+      if (identity) {
+        console.info(
+          `[Viewer saiu] matrícula=${identity.enrollment} nome="${identity.name}" socket=${socket.id}`
+        )
       }
+
+      roomSessionState.onSocketDisconnect(socket.id)
       broadcastState()
     })
 
-    socket.on('host:start_stream', (payload) => {
-      currentHostId = socket.id; 
-      activeViewers.delete(socket.id);
-      roomPassword = payload.password || ''; 
-      roomState.isStreaming = true; 
-      roomState.config = payload.config
+    socket.on('host:start_stream', (payload: HostStartStreamPayload) => {
+      roomSessionState.onHostStartStream(socket.id, payload)
       broadcastState()
     })
 
     socket.on('host:stop_stream', () => {
-      if (socket.id === currentHostId) {
-        currentHostId = null; roomState.isStreaming = false; roomState.config = null;
+      if (roomSessionState.onHostStopStream(socket.id)) {
         broadcastState()
       }
     })
 
-    socket.on('viewer:join', (payload) => {
-      if (roomState.config?.hasPassword && payload.password !== roomPassword) {
-        socket.emit('error', 'Senha incorreta.'); return
+    socket.on('viewer:join', (payload: ViewerJoinPayload) => {
+      const enrollment = payload.viewerEnrollment?.trim().toUpperCase() || ''
+      const name = normalizeName(payload.viewerName || '')
+
+      if (!isValidEnrollment(enrollment)) {
+        socket.emit('error', 'Matrícula inválida. Use o padrão AAAA999LLLL9999.')
+        return
       }
+
+      if (!isValidName(name)) {
+        socket.emit('error', 'Nome inválido. Informe seu nome real para continuar.')
+        return
+      }
+
+      if (!roomSessionState.isViewerAuthorized(payload)) {
+        socket.emit('error', 'Senha incorreta.')
+        return
+      }
+
+      roomSessionState.registerViewerIdentity(socket.id, enrollment, name)
+
+      console.info(
+        `[Viewer entrou] matrícula=${enrollment} nome="${name}" socket=${socket.id}`
+      )
+
       socket.emit('viewer:authorized')
+      broadcastState()
     })
 
     socket.on('viewer:visibility_change', async (isVisible) => {
-      if (socket.id === currentHostId) return;
+      if (roomSessionState.isHostSocket(socket.id)) return
 
       try {
-        if (isVisible) activeViewers.add(socket.id); 
-        else activeViewers.delete(socket.id);
-        
-        for (const consumer of consumers.values()) {
-          if (socket.id === consumer.appData.socketId) {
-            if (consumer.closed) continue;
-            if (isVisible) await consumer.resume().catch(() => {});
-            else await consumer.pause().catch(() => {});
-          }
-        }
+        roomSessionState.setViewerVisibility(socket.id, Boolean(isVisible))
+        await mediasoupEngine.syncViewerVisibility(socket.id, Boolean(isVisible))
         broadcastState()
-      } catch (err) {}
+      } catch {}
     })
 
-    socket.on('mediasoup:getRouterRtpCapabilities', (callback) => callback(router.rtpCapabilities))
+    socket.on('mediasoup:getRouterRtpCapabilities', (callback) =>
+      callback(mediasoupEngine.getRouterRtpCapabilities())
+    )
 
-    socket.on('mediasoup:createWebRtcTransport', async ({ direction: _direction }, callback) => {
-      const transport = await createWebRtcTransport()
+    socket.on('mediasoup:createWebRtcTransport', async (_: { direction?: string }, callback) => {
+      const transport = await mediasoupEngine.createWebRtcTransport()
       callback({
         id: transport.id,
         iceParameters: transport.iceParameters,
@@ -178,40 +157,44 @@ const startServer = async () => {
       })
     })
 
-    socket.on('mediasoup:connectWebRtcTransport', async ({ transportId, dtlsParameters }, callback) => {
-      const transport = transports.get(transportId)
-      if (transport) { await transport.connect({ dtlsParameters }); callback() }
+    socket.on('mediasoup:connectWebRtcTransport', async (
+      payload: ConnectWebRtcTransportPayload,
+      callback: () => void
+    ) => {
+      await mediasoupEngine.connectWebRtcTransport(payload)
+      callback()
     })
 
-    socket.on('mediasoup:produce', async ({ transportId, kind, rtpParameters }, callback) => {
-      const transport = transports.get(transportId)
-      if (transport) {
-        const producer = await transport.produce({ kind: kind as any, rtpParameters: rtpParameters as any })
-        producers.set(producer.id, producer)
-        producer.on('transportclose', () => { producer.close(); producers.delete(producer.id) })
-        callback({ id: producer.id })
-        socket.broadcast.emit('mediasoup:newProducer', { producerId: producer.id })
-      }
+    socket.on('mediasoup:produce', async (
+      payload: ProducePayload,
+      callback: (p: { id: string }) => void
+    ) => {
+      const producerId = await mediasoupEngine.produce(payload)
+      if (!producerId) return
+
+      callback({ id: producerId })
+      socket.broadcast.emit('mediasoup:newProducer', { producerId })
     })
 
-    socket.on('mediasoup:consume', async ({ transportId, producerId, rtpCapabilities }, callback) => {
-      if (!router.canConsume({ producerId, rtpCapabilities })) return
-      const transport = transports.get(transportId)
-      if (transport) {
-        const consumer = await transport.consume({ producerId, rtpCapabilities, paused: true, appData: { socketId: socket.id } })
-        consumers.set(consumer.id, consumer)
-        consumer.on('transportclose', () => { consumer.close(); consumers.delete(consumer.id) })
-        callback({ id: consumer.id, producerId: consumer.producerId, kind: consumer.kind, rtpParameters: consumer.rtpParameters })
-      }
+    socket.on('mediasoup:consume', async (
+      payload: ConsumePayload,
+      callback: (p: object) => void
+    ) => {
+      const consumer = await mediasoupEngine.consume(socket.id, payload)
+      if (!consumer) return
+      callback(consumer)
     })
 
-    socket.on('mediasoup:resume', async ({ transportId: _transportId, consumerId }, callback) => {
-      const consumer = consumers.get(consumerId)
-      if (consumer) { await consumer.resume(); callback() }
+    socket.on('mediasoup:resume', async (
+      payload: ResumePayload,
+      callback: () => void
+    ) => {
+      await mediasoupEngine.resume(payload)
+      callback()
     })
   })
 
-  httpServer.listen(port, '0.0.0.0', () => {});
+  httpServer.listen(HTTP_PORT, '0.0.0.0')
 }
 
-startServer();
+startServer()
