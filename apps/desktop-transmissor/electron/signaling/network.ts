@@ -99,13 +99,13 @@ function getSSID(): Promise<string | null> {
     }
 
     if (process.platform === 'darwin') {
-      void getMacWifiDevice().then((device) => {
-        if (!device) return done(null)
-
-        exec(`networksetup -getairportnetwork ${device}`, { timeout: 1800 }, (error, stdout) => {
-          const match = stdout?.match(/Current Wi-Fi Network:\s*(.+)$/m)
-          done(match?.[1]?.trim() ?? null)
-        })
+      // Revertendo para usar o binário `airport -I` (caminho conhecido) como antes
+      const airportPath = '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport'
+      exec(`${airportPath} -I`, { timeout: 1800 }, (err, stdout) => {
+        clearTimeout(safetyTimeout)
+        if (err || !stdout) return done(null)
+        const match = stdout.match(/^\s*SSID:\s*(.+)$/m)
+        return done(match ? match[1].trim() : null)
       })
       return
     }
